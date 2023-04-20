@@ -13,6 +13,7 @@ import de.uka.ilkd.key.rule.NoPosTacletApp;
 import de.uka.ilkd.key.rule.RuleApp;
 import de.uka.ilkd.key.rule.TacletApp;
 
+import de.uka.ilkd.key.strategy.QueueRuleApplicationManager;
 import org.key_project.util.collection.ImmutableList;
 import org.key_project.util.collection.ImmutableSLList;
 
@@ -290,9 +291,7 @@ public final class RuleAppIndex {
      * @param sci SequentChangeInfo describing the change of the sequent
      */
     public void sequentChanged(SequentChangeInfo sci) {
-        if (!autoMode) {
-            interactiveTacletAppIndex.sequentChanged(sci);
-        }
+        interactiveTacletAppIndex.sequentChanged(sci);
         automatedTacletAppIndex.sequentChanged(sci);
         builtInRuleAppIndex.sequentChanged(sci);
     }
@@ -330,13 +329,10 @@ public final class RuleAppIndex {
     /**
      * Report all rule applications that are supposed to be applied automatically, and that are
      * currently stored by the index
-     *
-     * @param l the NewRuleListener
-     * @param services the Services
      */
-    public void reportAutomatedRuleApps(NewRuleListener l, Services services) {
-        automatedTacletAppIndex.reportRuleApps(l, services);
-        builtInRuleAppIndex.reportRuleApps(l, goal);
+    public void reportAutomatedRuleApps() {
+        automatedTacletAppIndex.reportRuleApps(newRuleListener, goal.proof().getServices());
+        builtInRuleAppIndex.reportRuleApps(goal, newRuleListener);
     }
 
     /**
