@@ -8,6 +8,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.function.Consumer;
 
 import de.uka.ilkd.key.control.AbstractUserInterfaceControl;
 import de.uka.ilkd.key.java.Position;
@@ -39,7 +40,7 @@ public class ProofScriptEngine {
     /** The engine state map. */
     private EngineState stateMap;
 
-    private Observer commandMonitor;
+    private Consumer<Message> commandMonitor;
 
     public ProofScriptEngine(File file) throws IOException {
         this.initialLocation = new Location(file.toURI().toURL(), Position.newOneBased(1, 1));
@@ -121,10 +122,12 @@ public class ProofScriptEngine {
                 cmd = cmd.substring(0, MAX_CHARS_PER_COMMAND) + " ...'";
             }
 
+            final Node firstNode = stateMap.getFirstOpenAutomaticGoal().node();
             if (commandMonitor != null && stateMap.isEchoOn()
                     && !Optional.ofNullable(argMap.get(ScriptLineParser.COMMAND_KEY)).orElse("")
                             .startsWith(SYSTEM_COMMAND_PREFIX)) {
-                commandMonitor.update(null, cmd);
+                commandMonitor
+                        .accept(new ExecuteInfo(cmd, mlp.getLocation(), firstNode.serialNr()));
             }
 
             try {
@@ -139,12 +142,11 @@ public class ProofScriptEngine {
                     throw new ScriptException("Unknown command " + name);
                 }
 
-                if (!name.startsWith(SYSTEM_COMMAND_PREFIX) && stateMap.isEchoOn()) {
-                    LOGGER.debug("{}: {}", ++cnt, cmd);
-                }
-
                 Object o = command.evaluateArguments(stateMap, argMap);
-                final Node firstNode = stateMap.getFirstOpenAutomaticGoal().node();
+                if (!name.startsWith(SYSTEM_COMMAND_PREFIX) && stateMap.isEchoOn()) {
+                    LOGGER.debug("{}: {} on goal {} (script from line {})", ++cnt, cmd,
+                        firstNode.serialNr(), mlp.getLine());
+                }
                 command.execute(uiControl, o, stateMap);
                 firstNode.getNodeInfo().setScriptRuleApplication(true);
             } catch (InterruptedException ie) {
@@ -185,11 +187,34 @@ public class ProofScriptEngine {
      *
      * @param monitor the monitor to set
      */
-    public void setCommandMonitor(Observer monitor) {
+    public void setCommandMonitor(Consumer<Message> monitor) {
         this.commandMonitor = monitor;
     }
 
-    public static ProofScriptCommand getCommand(String commandName) {
+    public static ProofScriptCommand<?> getCommand(String commandName) {
         return COMMANDS.get(commandName);
+    }
+
+    public interface Message {
+    }
+
+    public static final class EchoMessage implements Message {
+        public final String message;
+
+        public EchoMessage(String message) {
+            this.message = message;
+        }
+    }
+
+    public static final class ExecuteInfo implements Message {
+        public final String command;
+        public final Location location;
+        public final int nodeSerial;
+
+        public ExecuteInfo(String command, Location location, int nodeSerial) {
+            this.command = command;
+            this.location = location;
+            this.nodeSerial = nodeSerial;
+        }
     }
 }
