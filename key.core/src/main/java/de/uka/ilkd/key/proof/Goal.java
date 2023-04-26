@@ -358,7 +358,7 @@ public final class Goal {
      */
     public void setSequent(SequentChangeInfo sci) {
         assert sci.getOriginalSequent() == node().sequent();
-        assert sci.sequent().equals(sci.getOriginalSequent()) == sci.hasChanged();
+        assert !sci.sequent().equals(sci.getOriginalSequent()) == sci.hasChanged();
         if (!sci.hasChanged()) {
             return;
         }
